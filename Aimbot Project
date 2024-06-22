@@ -1,0 +1,216 @@
+local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Holding = false
+
+_G.AimbotEnabled = true
+_G.TeamCheck = false
+_G.AimPart = "Head"
+_G.MaxAimDistance = 300 -- Distância máxima inicial em pixels
+
+-- Função para criar e atualizar a GUI
+local function CreateAimbotGUI()
+    if game.CoreGui:FindFirstChild("AimbotGUI") then return end
+
+    local AimbotGUI = Instance.new("ScreenGui")
+    AimbotGUI.Name = "AimbotGUI"
+    AimbotGUI.ResetOnSpawn = false -- Manter a GUI após o respawn
+    AimbotGUI.Parent = game:GetService("CoreGui")
+
+    local style = Instance.new("Frame", AimbotGUI)
+    style.Size = UDim2.new(0, 350, 0, 300)
+    style.Position = UDim2.new(0, 10, 0, 10)
+    style.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    style.BorderSizePixel = 0
+    style.BackgroundTransparency = 0.2
+    style.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    style.Active = true
+    style.Draggable = true
+
+    local title = Instance.new("TextLabel", style)
+    title.Text = "Aimbot Universal"
+    title.TextSize = 24
+    title.Font = Enum.Font.GothamBold
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    title.BorderSizePixel = 0
+    title.TextColor3 = Color3.new(1, 1, 1)
+
+    -- Créditos
+    local credits = Instance.new("TextLabel", style)
+    credits.Text = "Code made and modified by silva_bsb and silva557_ via Discord."
+    credits.TextSize = 10
+    credits.Font = Enum.Font.Gotham
+    credits.Size = UDim2.new(0, 200, 0, 20)
+    credits.Position = UDim2.new(1, -210, 1, -30)
+    credits.TextColor3 = Color3.new(1, 1, 1)
+    credits.BackgroundTransparency = 1
+    credits.TextXAlignment = Enum.TextXAlignment.Right
+
+    -- Botão de ligar/desligar Aimbot
+    local aimbotToggle = Instance.new("TextButton")
+    aimbotToggle.Text = "Aimbot: Ativado"
+    aimbotToggle.TextSize = 14
+    aimbotToggle.Font = Enum.Font.Gotham
+    aimbotToggle.Size = UDim2.new(0, 330, 0, 30)
+    aimbotToggle.Position = UDim2.new(0.5, -165, 0, 40)
+    aimbotToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    aimbotToggle.TextColor3 = Color3.new(1, 1, 1)
+    aimbotToggle.Parent = style
+    aimbotToggle.MouseButton1Click:Connect(function()
+        _G.AimbotEnabled = not _G.AimbotEnabled
+        aimbotToggle.Text = "Aimbot: " .. (_G.AimbotEnabled and "Ativado" or "Desativado")
+    end)
+
+    -- Radio buttons para escolher a parte do corpo para mirar
+    local aimPartOptions = {"Cabeça", "Tronco"}
+
+    local aimPartContainer = Instance.new("Frame")
+    aimPartContainer.Size = UDim2.new(0, 330, 0, 30)
+    aimPartContainer.Position = UDim2.new(0.5, -165, 0, 90)
+    aimPartContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    aimPartContainer.Parent = style
+
+    for i, option in ipairs(aimPartOptions) do
+        local aimPartButton = Instance.new("TextButton")
+        aimPartButton.Text = option
+        aimPartButton.TextSize = 14
+        aimPartButton.Font = Enum.Font.Gotham
+        aimPartButton.Size = UDim2.new(0, 160, 0, 30)
+        aimPartButton.Position = UDim2.new(0, (i-1)*170, 0, 0)
+        aimPartButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        aimPartButton.TextColor3 = Color3.new(1, 1, 1)
+        aimPartButton.Parent = aimPartContainer
+        aimPartButton.MouseButton1Click:Connect(function()
+            for _, child in ipairs(aimPartContainer:GetChildren()) do
+                if child:IsA("TextButton") then
+                    child.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                end
+            end
+            aimPartButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+            _G.AimPart = (i == 1 and "Head" or "Torso")
+        end)
+    end
+
+    -- Botão de ligar/desligar fogo amigo
+    local friendlyFireToggle = Instance.new("TextButton")
+    friendlyFireToggle.Text = "Fogo Amigo: Desativado"
+    friendlyFireToggle.TextSize = 14
+    friendlyFireToggle.Font = Enum.Font.Gotham
+    friendlyFireToggle.Size = UDim2.new(0, 330, 0, 30)
+    friendlyFireToggle.Position = UDim2.new(0.5, -165, 0, 140)
+    friendlyFireToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    friendlyFireToggle.TextColor3 = Color3.new(1, 1, 1)
+    friendlyFireToggle.Parent = style
+    friendlyFireToggle.MouseButton1Click:Connect(function()
+        _G.TeamCheck = not _G.TeamCheck
+        friendlyFireToggle.Text = "Fogo Amigo: " .. (_G.TeamCheck and "Ativado" or "Desativado")
+    end)
+
+    local distanceTextLabel = Instance.new("TextLabel")
+    distanceTextLabel.Text = "Aim Distance:"
+    distanceTextLabel.TextSize = 14
+    distanceTextLabel.Font = Enum.Font.Gotham
+    distanceTextLabel.Size = UDim2.new(0, 100, 0, 30)
+    distanceTextLabel.Position = UDim2.new(0.5, -160, 0, 190)
+    distanceTextLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    distanceTextLabel.TextColor3 = Color3.new(1, 1, 1)
+    distanceTextLabel.Parent = style
+
+    local distanceTextBox = Instance.new("TextBox")
+    distanceTextBox.Text = tostring(_G.MaxAimDistance)
+    distanceTextBox.TextSize = 14
+    distanceTextBox.Font = Enum.Font.Gotham
+    distanceTextBox.Size = UDim2.new(0, 100, 0, 30)
+    distanceTextBox.Position = UDim2.new(0.5, -50, 0, 190)
+    distanceTextBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    distanceTextBox.TextColor3 = Color3.new(1, 1, 1)
+    distanceTextBox.Parent = style
+
+    distanceTextBox.FocusLost:Connect(function()
+        local newDistance = tonumber(distanceTextBox.Text)
+        if newDistance then
+            _G.MaxAimDistance = newDistance
+        else
+            distanceTextBox.Text = tostring(_G.MaxAimDistance)
+        end
+    end)
+end
+
+CreateAimbotGUI()
+
+-- Função para encontrar o jogador mais próximo
+local function GetClosestPlayer()
+    local MaximumDistance = _G.MaxAimDistance
+    local Target = nil
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v.Name ~= LocalPlayer.Name then
+            if _G.TeamCheck == true then
+                if v.Team ~= LocalPlayer.Team then
+                    if v.Character ~= nil and v.Character:FindFirstChild("HumanoidRootPart") ~= nil then
+                        local ScreenPoint = Camera:WorldToScreenPoint(v.Character.HumanoidRootPart.Position)
+                        local VectorDistance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(ScreenPoint.X, ScreenPoint.Y)).Magnitude
+
+                        -- Verifica se está dentro da distância máxima configurada
+                        if VectorDistance < _G.MaxAimDistance then
+                            local direction = (v.Character[_G.AimPart].Position - Camera.CFrame.Position).unit
+                            local dot = Camera.CFrame.LookVector:Dot(direction)
+
+                            -- Verifica se o jogador está dentro do campo de visão
+                            if dot > 0 then
+                                Target = v
+                                MaximumDistance = VectorDistance
+                            end
+                        end
+                    end
+                end
+            else
+                if v.Character ~= nil and v.Character:FindFirstChild("HumanoidRootPart") ~= nil then
+                    local ScreenPoint = Camera:WorldToScreenPoint(v.Character.HumanoidRootPart.Position)
+                    local VectorDistance = (Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2.new(ScreenPoint.X, ScreenPoint.Y)).Magnitude
+
+                    -- Verifica se está dentro da distância máxima configurada
+                    if VectorDistance < _G.MaxAimDistance then
+                        local direction = (v.Character[_G.AimPart].Position - Camera.CFrame.Position).unit
+                        local dot = Camera.CFrame.LookVector:Dot(direction)
+
+                        -- Verifica se o jogador está dentro do campo de visão
+                        if dot > 0 then
+                            Target = v
+                            MaximumDistance = VectorDistance
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return Target
+end
+
+-- Atualizar o estado do aimbot no renderstepped
+RunService.RenderStepped:Connect(function()
+    if _G.AimbotEnabled and Holding then
+        local closestPlayer = GetClosestPlayer()
+        if closestPlayer then
+            TweenService:Create(Camera, TweenInfo.new(0.1, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFrame.new(Camera.CFrame.Position, closestPlayer.Character[_G.AimPart].Position)}):Play()
+        end
+    end
+end)
+
+-- Atualizar o estado do aimbot com a tecla F
+UserInputService.InputBegan:Connect(function(Input)
+    if Input.KeyCode == Enum.KeyCode.F then
+        Holding = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(Input)
+    if Input.KeyCode == Enum.KeyCode.F then
+        Holding = false
+    end
+end)
