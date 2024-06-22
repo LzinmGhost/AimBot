@@ -8,6 +8,7 @@ About us: We are still amateur programmers and work every day to improve our pro
 Note: The project is in beta version; we are uncertain whether it will continue to alpha or V1, but we are committed to its progression.
 
 Thank you.
+     Our means of communication are via discord, silva557_ and silva_bsb we are different people only with the same surnames.
 
     ███████████████████████████
     ███████▀▀▀░░░░░░░▀▀▀███████
